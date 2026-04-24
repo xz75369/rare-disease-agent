@@ -1,0 +1,71 @@
+{
+  "patient_id": "P005",
+  "age": 5,
+  "sex": "M",
+  "family_history": "无家族史（散发/新发/复合遗传）",
+  "clinical_text": "5岁男孩，先天性牵牛花视盘发育异常、视网膜脱离→右眼失明、左眼小眼/眼球萎缩+高度近视、眼球震颤，诊断为牵牛花综合征。全面发育迟缓、轻度智力残疾、自闭症行为+刻板行为，生长正常，社交里程碑落后。无家族史→散发/新发/复合遗传。",
+  "hpo_terms": [
+    {"id": "HP:0000541", "name": "Retinal detachment"},
+    {"id": "HP:0000568", "name": "Microphthalmia"},
+    {"id": "HP:0000618", "name": "Blindness"},
+    {"id": "HP:0000639", "name": "Nystagmus"},
+    {"id": "HP:0000717", "name": "Autism"},
+    {"id": "HP:0000733", "name": "Stereotypy"},
+    {"id": "HP:0001263", "name": "Global developmental delay"},
+    {"id": "HP:0002194", "name": "Delayed gross motor development"},
+    {"id": "HP:0002474", "name": "Speech delay"},
+    {"id": "HP:0010862", "name": "Delayed fine motor development"},
+    {"id": "HP:0010864", "name": "Severe intellectual disability"},
+    {"id": "HP:0011003", "name": "High myopia"},
+    {"id": "HP:0012434", "name": "Delayed social development"},
+    {"id": "HP:0025514", "name": "Morning glory disc anomaly"},
+    {"id": "HP:0001270", "name": "Motor delay"},
+    {"id": "HP:0000750", "name": "Delayed speech and language development"},
+    {"id": "HP:0001256", "name": "Mild intellectual disability"},
+    {"id": "HP:0000729", "name": "Autistic behavior"}
+  ],
+  "candidate_variants": [
+    {
+      "gene": "PRPF8",
+      "hgvs_c": "c.1298delC",
+      "hgvs_p": "p.Glu433Alafs*14",
+      "inheritance": "maternal",
+      "acmg_class": "LP",
+      "acmg_evidence": ["PVS1", "PM2"],
+      "zygosity": "heterozygous",
+      "associated_diseases": ["Retinitis pigmentosa 13"]
+    },
+    {
+      "gene": "CDH23",
+      "hgvs_c": "compound heterozygous (需定相)",
+      "hgvs_p": "多个变异",
+      "inheritance": "compound heterozygous (suspected)",
+      "acmg_class": "VUS",
+      "acmg_evidence": ["PM3_Supporting"],
+      "zygosity": "compound heterozygous",
+      "associated_diseases": ["Usher syndrome type 1D", "Deafness autosomal recessive 12"]
+    },
+    {
+      "gene": "SAG",
+      "hgvs_c": "splice del",
+      "hgvs_p": "splicing variant",
+      "inheritance": "maternal",
+      "acmg_class": "LP",
+      "acmg_evidence": ["PVS1_Moderate", "PM2"],
+      "zygosity": "heterozygous",
+      "associated_diseases": ["Oguchi disease 1"]
+    },
+    {
+      "gene": "ASXL3",
+      "hgvs_c": "intronic variant",
+      "hgvs_p": "intron",
+      "inheritance": "unknown",
+      "acmg_class": "VUS",
+      "acmg_evidence": ["PM2_Supporting"],
+      "zygosity": "heterozygous",
+      "associated_diseases": ["Bainbridge-Ropers syndrome"]
+    }
+  ],
+  "prior_diagnosis": "牵牛花综合征",
+  "excluded_conditions": []
+}

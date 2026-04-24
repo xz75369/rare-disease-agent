@@ -148,3 +148,11 @@ class DiagnosisOutput(BaseModel):
     report_markdown: str = Field(description="完整中文 Markdown 诊断报告")
     evidences: list[Evidence] = Field(description="全部使用的证据列表（含 ref_id）")
     meta: dict = Field(description="元数据：模型名、耗时、步骤计数等")
+    causal_hierarchy: Optional[dict] = Field(
+        default=None,
+        description="因果分层：main_driver / modifiers / secondary_candidates / uncertain_loci"
+    )
+    genetic_model_hypotheses: list[dict] = Field(
+        default_factory=list,
+        description="遗传模型假设列表"
+    )
