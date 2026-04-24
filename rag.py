@@ -99,6 +99,53 @@ class LocalKBRetriever:
         ]
 
 
+def build_search_queries(inp) -> list[str]:
+    """根据 DiagnosisInput 构造多条检索 query。
+    支持两种场景：Exomiser hits / 临床候选变异。
+
+    Args:
+        inp: DiagnosisInput 实例
+
+    Returns:
+        去重后的 query 列表
+    """
+    queries = []
+
+    # Query 类型 1：HPO 驱动（所有场景通用）
+    if inp.hpo_terms:
+        hpo_names = [h.name for h in inp.hpo_terms[:5]]
+        queries.append(" ".join(hpo_names) + " rare disease diagnosis")
+
+    # Query 类型 2：基因驱动（针对 candidate_variants）
+    for var in inp.candidate_variants[:3]:
+        queries.append(f"{var.gene} neurodevelopmental disorder phenotype")
+        if var.hgvs_p:
+            queries.append(f"{var.gene} {var.hgvs_p} pathogenicity")
+        # VUS/LP 额外检索功能验证相关
+        if var.acmg_class in ["VUS", "LP"]:
+            queries.append(f"{var.gene} functional study de novo")
+
+    # Query 类型 3：Exomiser top 基因
+    for hit in inp.exomiser_hits[:3]:
+        queries.append(f"{hit.gene_symbol} phenotype clinical features")
+
+    # Query 类型 4：关联疾病名
+    disease_names: set[str] = set()
+    for var in inp.candidate_variants:
+        disease_names.update(var.associated_diseases)
+    for hit in inp.exomiser_hits[:3]:
+        for d in hit.associated_diseases:
+            if isinstance(d, dict) and d.get("disease_name"):
+                disease_names.add(d["disease_name"])
+            elif isinstance(d, str):
+                disease_names.add(d)
+    for name in list(disease_names)[:3]:
+        queries.append(f"{name} clinical diagnosis criteria")
+
+    # 保持顺序去重
+    return list(dict.fromkeys(queries))
+
+
 async def pubmed_search(
     query: str,
     max_results: int = 3,
@@ -108,6 +155,7 @@ async def pubmed_search(
 
     安全约束：query 只含 HPO 名称、基因名等医学术语，不含患者任何个人信息。
     超时或网络不可用时返回空列表，不抛异常。
+    加入近 5 年时间过滤，优先获取新文献（针对 H3-3A 等 2021 年后才明确的新基因）。
 
     Args:
         query: 医学术语查询字符串（不含患者信息）
@@ -115,6 +163,8 @@ async def pubmed_search(
         timeout: HTTP 超时秒数
     """
     base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+    # 近 5 年时间过滤，优先获取新文献
+    date_filtered_query = f"{query} AND 2020:2026[dp]"
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             # esearch：获取 PMID 列表
@@ -122,7 +172,7 @@ async def pubmed_search(
                 f"{base}/esearch.fcgi",
                 params={
                     "db": "pubmed",
-                    "term": query,
+                    "term": date_filtered_query,
                     "retmax": max_results,
                     "retmode": "json",
                     "sort": "relevance",

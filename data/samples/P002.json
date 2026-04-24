@@ -1,0 +1,56 @@
+{
+  "patient_id": "P002",
+  "age": 12,
+  "sex": "M",
+  "family_history": "无特殊家族史",
+  "clinical_text": "12岁男性。牙列不齐、小下颌、左轴前多指（已行手术）。语言发育迟滞，运动发育较差，智力低下。异常脑电图：睡眠期多量广泛性棘波、棘慢波、多棘慢波爆发，睡眠期右侧中央顶区、中后颞区少量棘慢波散发。外院诊断：癫痫并精神发育迟滞。颅脑MR：1. 大枕大池 2. 冠状位FLAIR扫及左额叶高信号影，考虑伪影可能 3. 透明隔发育异常？",
+  "hpo_terms": [
+    {"id": "HP:0000347", "name": "Micrognathia"},
+    {"id": "HP:0000692", "name": "Dental crowding"},
+    {"id": "HP:0000750", "name": "Delayed speech and language development"},
+    {"id": "HP:0001249", "name": "Intellectual disability"},
+    {"id": "HP:0001177", "name": "Preaxial polydactyly"},
+    {"id": "HP:0001250", "name": "Seizure"},
+    {"id": "HP:0001263", "name": "Global developmental delay"},
+    {"id": "HP:0001270", "name": "Motor delay"},
+    {"id": "HP:0002353", "name": "EEG abnormality"},
+    {"id": "HP:0002700", "name": "Enlarged cisterna magna"},
+    {"id": "HP:0011197", "name": "EEG with focal spike-wave complexes"},
+    {"id": "HP:0012001", "name": "EEG with generalized polyspikes"},
+    {"id": "HP:0031491", "name": "Continuous spike-wave during slow-wave sleep"}
+  ],
+  "candidate_variants": [
+    {
+      "gene": "H3-3A",
+      "hgvs_c": "NM_002107.7:c.4G>A",
+      "hgvs_p": "p.Ala2Thr",
+      "inheritance": "de novo",
+      "acmg_class": "VUS",
+      "acmg_evidence": ["PS2_Moderate", "PM1", "PM2_Supporting"],
+      "zygosity": "heterozygous",
+      "associated_diseases": ["Bryant-Li-Bhoj neurodevelopmental syndrome"]
+    },
+    {
+      "gene": "PIK3C2A",
+      "hgvs_c": "NM_002645.4:c.253A>T",
+      "hgvs_p": "p.Lys85Ter",
+      "inheritance": "maternal",
+      "acmg_class": "LP",
+      "acmg_evidence": ["PVS1", "PM2"],
+      "zygosity": "heterozygous",
+      "associated_diseases": ["PIK3C2A-related disorder"]
+    },
+    {
+      "gene": "PIK3C2A",
+      "hgvs_c": "NM_002645.4:c.3449T>C",
+      "hgvs_p": "p.Leu1150Ser",
+      "inheritance": "paternal",
+      "acmg_class": "VUS",
+      "acmg_evidence": ["PM2_Supporting"],
+      "zygosity": "heterozygous",
+      "associated_diseases": ["PIK3C2A-related disorder"]
+    }
+  ],
+  "prior_diagnosis": "癫痫并精神发育迟滞",
+  "excluded_conditions": ["Fragile X syndrome"]
+}

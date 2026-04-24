@@ -20,7 +20,7 @@ from prompts import (
     build_evidence_block,
     build_patient_block,
 )
-from rag import LocalKBRetriever, gather_evidence
+from rag import LocalKBRetriever, gather_evidence, build_search_queries
 from schemas import DiagnosisInput, DiagnosisOutput, Evidence, Hypothesis
 
 
@@ -47,11 +47,17 @@ class DiagnosisAgent:
         return build_evidence_block(self.evidences[:10])
 
     def _parse_hypotheses(self, raw: dict) -> list[Hypothesis]:
-        """从 LLM 返回的 dict 中安全解析 Hypothesis 列表。"""
+        """从 LLM 返回的 dict 中安全解析 Hypothesis 列表。
+        兼容新 Prompt 格式（含 vus_upgrade_hint、related_variant 等额外字段）。
+        """
         hyps: list[Hypothesis] = []
         for item in raw.get("hypotheses", [])[:5]:
             try:
-                hyps.append(Hypothesis(**item))
+                # 新 Prompt 用 conflicting_phenotypes 字段名保持一致
+                # 若 LLM 返回旧字段名则做兼容映射
+                if "missing_key_phenotypes" in item and "conflicting_phenotypes" not in item:
+                    item["conflicting_phenotypes"] = item.pop("missing_key_phenotypes")
+                hyps.append(Hypothesis.model_validate(item))
             except Exception as e:
                 print(f"  [WARN] 假设解析跳过: {e}")
         return hyps
@@ -87,19 +93,16 @@ class DiagnosisAgent:
             if progress_callback:
                 progress_callback(msg)
 
-        # ── Step 1：基于 HPO 的初始检索 ──────────────────────────────────────
+        # ── Step 1：基于 HPO + 候选变异的初始检索 ────────────────────────────
         log("[1/4] 初始证据检索（本地 BM25 + 可选 PubMed）...")
         t1 = time.perf_counter()
 
-        # 取 top 5 HPO 名称拼接为 BM25 查询
-        hpo_query = " ".join(t.name for t in inp.hpo_terms[:5])
-        # 追加 Exomiser top gene 提升相关性
-        gene_query = " ".join(h.gene_symbol for h in inp.exomiser_hits[:3])
-        initial_query = f"{hpo_query} {gene_query}".strip()
+        queries = build_search_queries(inp)
+        log(f"  构造 {len(queries)} 个检索 query...")
 
         existing_urls = {e.url for e in self.evidences}
         new_evs = await gather_evidence(
-            queries=[initial_query],
+            queries=queries,
             kb=self.kb,
             existing_urls=existing_urls,
             start_ref_id=self._next_ref_id,

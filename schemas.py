@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+from typing import Optional
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -53,6 +54,34 @@ class ExomiserHit(BaseModel):
         return data
 
 
+class CandidateVariant(BaseModel):
+    """
+    临床已筛选的候选变异（通常来自 Trio-WGS + ACMG 分类后的结果）。
+    与 ExomiserHit 不同，此类用于"医生+生信已经筛出明确变异，需 Agent 辅助 VUS 升级"的场景。
+    """
+    gene: str = Field(description="基因符号，如 H3-3A")
+    hgvs_c: str = Field(description="cDNA 变异，如 NM_002107.7:c.4G>A")
+    hgvs_p: Optional[str] = Field(default=None, description="蛋白变异，如 p.Ala2Thr")
+    inheritance: str = Field(
+        description="遗传模式：de novo / maternal / paternal / unknown"
+    )
+    acmg_class: str = Field(
+        description="ACMG 分级：P (Pathogenic) / LP (Likely Pathogenic) / VUS / LB / B"
+    )
+    acmg_evidence: list[str] = Field(
+        default_factory=list,
+        description="ACMG 证据列表，如 ['PS2_Moderate', 'PM1', 'PM2_Supporting']"
+    )
+    zygosity: str = Field(
+        default="heterozygous",
+        description="合子性：heterozygous / homozygous / compound heterozygous"
+    )
+    associated_diseases: list[str] = Field(
+        default_factory=list,
+        description="相关疾病名称列表，如 ['Bryant-Li-Bhoj neurodevelopmental syndrome']"
+    )
+
+
 class DiagnosisInput(BaseModel):
     patient_id: str = Field(description="患者唯一标识符")
     age: float | None = Field(default=None, description="患者年龄（岁）")
@@ -62,6 +91,18 @@ class DiagnosisInput(BaseModel):
     hpo_terms: list[HPOTerm] = Field(description="观察到的 HPO 表型术语列表")
     exomiser_hits: list[ExomiserHit] = Field(
         default=[], description="Exomiser 基因优先级结果（取 top 5）"
+    )
+    candidate_variants: list[CandidateVariant] = Field(
+        default_factory=list,
+        description="临床已筛选的候选变异（VUS/LP/P）。与 exomiser_hits 并列，可独立使用或组合使用。"
+    )
+    prior_diagnosis: Optional[str] = Field(
+        default=None,
+        description="外院或既往诊断（如果有），如 '癫痫并精神发育迟滞'"
+    )
+    excluded_conditions: list[str] = Field(
+        default_factory=list,
+        description="已排除的疾病，如 ['Fragile X syndrome']"
     )
 
 
