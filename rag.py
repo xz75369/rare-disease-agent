@@ -37,38 +37,51 @@ class LocalKBRetriever:
         self._loaded = False
 
     def load(self) -> None:
-        """加载 diseases.jsonl 并构建 BM25 索引（首次调用时执行，此后幂等）。"""
+        """加载 corpus 目录下所有 *.jsonl 并构建 BM25 索引（首次调用时执行，此后幂等）。
+
+        优先加载 diseases.jsonl（基础疾病库），再加载其余 *.jsonl（如 acmg_genes.jsonl）。
+        """
         if self._loaded:
             return
 
-        jsonl_path = self.corpus_dir / "diseases.jsonl"
-        if not jsonl_path.exists():
+        base_path = self.corpus_dir / "diseases.jsonl"
+        if not base_path.exists():
             raise FileNotFoundError(
-                f"Corpus not found: {jsonl_path}\n"
+                f"Corpus not found: {base_path}\n"
                 "Run: python scripts/prepare_corpus.py"
             )
 
         self.documents = []
-        with open(jsonl_path, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    self.documents.append(json.loads(line))
 
-        # 每个文档：name + synonyms + definition + HPO IDs 拼接为检索文本
+        # 按文件名排序加载，diseases.jsonl 首先，其余补充库追加
+        jsonl_files = sorted(self.corpus_dir.glob("*.jsonl"))
+        for jsonl_path in jsonl_files:
+            count_before = len(self.documents)
+            with open(jsonl_path, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        self.documents.append(json.loads(line))
+            added = len(self.documents) - count_before
+            print(f"  [LocalKB] {jsonl_path.name}: +{added} 条")
+
+        # 每个文档：name + synonyms + definition + HPO IDs + ACMG evidence 拼接为检索文本
         tokenized_corpus = [self._tokenize(self._doc_text(doc)) for doc in self.documents]
         self.bm25 = BM25Okapi(tokenized_corpus)
         self._loaded = True
-        print(f"  [LocalKB] 已加载 {len(self.documents)} 条疾病记录")
+        print(f"  [LocalKB] 共加载 {len(self.documents)} 条记录")
 
     def _doc_text(self, doc: dict) -> str:
-        """将文档字段拼接为检索用文本字符串。"""
+        """将文档字段拼接为检索用文本字符串（含 ACMG evidence 字段）。"""
+        acmg = doc.get("acmg_evidence", {})
+        acmg_text = " ".join(str(v) for v in acmg.values()) if isinstance(acmg, dict) else ""
         parts = [
             doc.get("name", ""),
             " ".join(doc.get("synonyms", [])),
             doc.get("definition", ""),
             " ".join(doc.get("associated_hpo", [])),
             " ".join(doc.get("associated_genes", [])),
+            acmg_text,
         ]
         return " ".join(p for p in parts if p)
 
@@ -253,11 +266,11 @@ async def gather_evidence(
 
             hpo_list = doc.get("associated_hpo", [])[:5]
             gene_list = doc.get("associated_genes", [])[:3]
+            # acmg_genes.jsonl 的 definition 已前置 ACMG 证据代码，直接使用
             snippet = (
                 f"{doc.get('definition', '') or doc.get('description', '')} "
-                f"HPO: {' '.join(hpo_list)} "
-                f"Genes: {' '.join(gene_list)}"
-            )[:200]
+                f"Genes:{','.join(gene_list)} HPO:{' '.join(hpo_list)}"
+            )[:250]
 
             results.append(
                 Evidence(

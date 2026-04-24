@@ -361,9 +361,9 @@ def build_patient_block(inp) -> str:
 
 
 def build_evidence_block(evidences: list) -> str:
-    """将 Evidence 列表格式化为 Prompt 中的证据段落。上限 10 条，每条 ≤200 字。"""
+    """将 Evidence 列表格式化为 Prompt 中的证据段落。上限 15 条，每条 ≤250 字。"""
     lines = [
-        f"[{e.ref_id}] ({e.source}) {e.title}: {e.snippet[:200]}"
-        for e in evidences[:10]
+        f"[{e.ref_id}] ({e.source}) {e.title}: {e.snippet[:250]}"
+        for e in evidences[:15]
     ]
     return "\n".join(lines) if lines else "(no evidence retrieved)"

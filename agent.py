@@ -43,8 +43,8 @@ class DiagnosisAgent:
                 self.evidences.append(ev)
 
     def _indexed_evidence_text(self) -> str:
-        """返回供 Prompt 使用的格式化证据列表（top 10 条，每条 snippet ≤200 字）。"""
-        return build_evidence_block(self.evidences[:10])
+        """返回供 Prompt 使用的格式化证据列表（top 15 条，每条 snippet ≤250 字）。"""
+        return build_evidence_block(self.evidences[:15])
 
     def _parse_hypotheses(self, raw: dict) -> list[Hypothesis]:
         """从 LLM 返回的 dict 中安全解析 Hypothesis 列表。

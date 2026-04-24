@@ -115,7 +115,7 @@ class Evidence(BaseModel):
     url: str = Field(
         description="证据链接（本地伪 URL 如 https://monarchinitiative.org/disease/MONDO:xxx）"
     )
-    snippet: str = Field(max_length=200, description="供 LLM 上下文使用的摘要片段（≤200 字）")
+    snippet: str = Field(max_length=250, description="供 LLM 上下文使用的摘要片段（≤250 字）")
 
 
 class Hypothesis(BaseModel):
