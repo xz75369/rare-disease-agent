@@ -1,0 +1,209 @@
+{
+    "patient_id": "P1",
+    "hpo_terms": [
+      {
+        "id": "HP:0006579",
+        "name": "Prolonged neonatal jaundice"
+      },
+      {
+        "id": "HP:0002170",
+        "name": "Intracranial hemorrhage"
+      },
+      {
+        "id": "HP:0000750",
+        "name": "Delayed speech and language development"
+      },
+      {
+        "id": "HP:0011968",
+        "name": "Feeding difficulties"
+      },
+      {
+        "id": "HP:0001537",
+        "name": "Umbilical hernia"
+      },
+      {
+        "id": "HP:0000337",
+        "name": "Broad forehead"
+      },
+      {
+        "id": "HP:0000316",
+        "name": "Hypertelorism"
+      },
+      {
+        "id": "HP:0005280",
+        "name": "Depressed nasal bridge"
+      },
+      {
+        "id": "HP:0012471",
+        "name": "Thick vermilion border"
+      },
+      {
+        "id": "HP:0000218",
+        "name": "High palate"
+      },
+      {
+        "id": "HP:0000158",
+        "name": "Macroglossia"
+      },
+      {
+        "id": "HP:0000691",
+        "name": "Microdontia"
+      }
+    ],
+    "exomiser_hits": [
+      {
+        "rank": 1,
+        "gene_symbol": "EHMT1",
+        "entrez_id": "79813",
+        "combined_score": 0.8796652458945148,
+        "priority_score": 0.728685092197144,
+        "variant_score": 1.0,
+        "p_value": 3e-05,
+        "associated_diseases": [
+          {
+            "disease_id": "OMIM:610253",
+            "disease_name": "Kleefstra syndrome 1",
+            "score": 0.728685092197144
+          }
+        ]
+      },
+      {
+        "rank": 2,
+        "gene_symbol": "GJB2",
+        "entrez_id": "2706",
+        "combined_score": 0.8036674174134448,
+        "priority_score": 0.6739990388201667,
+        "variant_score": 1.0,
+        "p_value": 0.000156,
+        "associated_diseases": [
+          {
+            "disease_id": "OMIM:148210",
+            "disease_name": "Keratitis-ichthyosis-deafness syndrome",
+            "score": 0.6739990388201667
+          }
+        ]
+      },
+      {
+        "rank": 3,
+        "gene_symbol": "COL1A2",
+        "entrez_id": "1278",
+        "combined_score": 0.6895384213763964,
+        "priority_score": 0.6100768202015214,
+        "variant_score": 1.0,
+        "p_value": 0.000704,
+        "associated_diseases": [
+          {
+            "disease_id": "ORPHA:1899",
+            "disease_name": "Arthrochalasia Ehlers-Danlos syndrome",
+            "score": 0.6100768202015214
+          }
+        ]
+      },
+      {
+        "rank": 4,
+        "gene_symbol": "SEC23B",
+        "entrez_id": "10483",
+        "combined_score": 0.1274767654009775,
+        "priority_score": 0.6812055088804636,
+        "variant_score": 0.971749484539032,
+        "p_value": 0.045504,
+        "associated_diseases": [
+          {
+            "disease_id": "ORPHA:201",
+            "disease_name": "Cowden syndrome",
+            "score": 0.6812055088804636
+          }
+        ]
+      },
+      {
+        "rank": 5,
+        "gene_symbol": "TSHR",
+        "entrez_id": "7253",
+        "combined_score": 0.10068469377805975,
+        "priority_score": 0.797173717198816,
+        "variant_score": 0.9562733769416809,
+        "p_value": 0.058414,
+        "associated_diseases": [
+          {
+            "disease_id": "ORPHA:95713",
+            "disease_name": "Athyreosis",
+            "score": 0.797173717198816
+          }
+        ]
+      },
+      {
+        "rank": 6,
+        "gene_symbol": "ZIC2",
+        "entrez_id": "7546",
+        "combined_score": 0.08533179643136174,
+        "priority_score": 0.7162345725065172,
+        "variant_score": 0.848436713218689,
+        "p_value": 0.068312,
+        "associated_diseases": [
+          {
+            "disease_id": "OMIM:609637",
+            "disease_name": "Holoprosencephaly 5",
+            "score": 0.7162345725065172
+          }
+        ]
+      },
+      {
+        "rank": 7,
+        "gene_symbol": "CBL",
+        "entrez_id": "867",
+        "combined_score": 0.06968142841601459,
+        "priority_score": 0.6952984816227017,
+        "variant_score": 0.9494593143463135,
+        "p_value": 0.081262,
+        "associated_diseases": [
+          {
+            "disease_id": "OMIM:613563",
+            "disease_name": "Noonan syndrome-like disorder with or without juvenile myelomonocytic leukemia",
+            "score": 0.6952984816227017
+          }
+        ]
+      },
+      {
+        "rank": 8,
+        "gene_symbol": "CACNA1I",
+        "entrez_id": "8911",
+        "combined_score": 0.06332839746681584,
+        "priority_score": 0.6831940225256343,
+        "variant_score": 0.849958062171936,
+        "p_value": 0.087626,
+        "associated_diseases": [
+          {
+            "disease_id": "OMIM:620114",
+            "disease_name": "Neurodevelopmental disorder with speech impairment and with or without seizures",
+            "score": 0.6831940225256343
+          }
+        ]
+      },
+      {
+        "rank": 9,
+        "gene_symbol": "FBXO39",
+        "entrez_id": "162517",
+        "combined_score": 0.058883094869525456,
+        "priority_score": 0.5000031579886581,
+        "variant_score": 0.9902999997138977,
+        "p_value": 0.0927,
+        "associated_diseases": []
+      },
+      {
+        "rank": 10,
+        "gene_symbol": "ATP7A",
+        "entrez_id": "538",
+        "combined_score": 0.049285179461725885,
+        "priority_score": 0.7821054870991058,
+        "variant_score": 0.8609675168991089,
+        "p_value": 0.105672,
+        "associated_diseases": [
+          {
+            "disease_id": "ORPHA:565",
+            "disease_name": "Menkes disease",
+            "score": 0.7821054870991058
+          }
+        ]
+      }
+    ]
+  }

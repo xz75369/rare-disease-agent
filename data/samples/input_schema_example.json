@@ -1,0 +1,83 @@
+{
+  "patient_id": "CASE-2025-001",
+  "age": 2.5,
+  "sex": "M",
+  "family_history": "父母表型正常，无近亲婚配，家族中无类似病史",
+  "clinical_text": "2岁半男性患儿，6月龄起出现热性惊厥，逐渐发展为无热惊厥，包括肌阵挛发作和全身强直-阵挛发作。发育迟缓明显，无独立行走。癫痫对多种抗癫痫药物反应差，卡马西平可能加重发作。",
+  "hpo_terms": [
+    { "id": "HP:0002373", "name": "Febrile seizure",               "observation_status": "observed" },
+    { "id": "HP:0001250", "name": "Seizure",                       "observation_status": "observed" },
+    { "id": "HP:0002123", "name": "Generalized myoclonic seizure", "observation_status": "observed" },
+    { "id": "HP:0001263", "name": "Global developmental delay",    "observation_status": "observed" },
+    { "id": "HP:0002133", "name": "Status epilepticus",            "observation_status": "observed" },
+    { "id": "HP:0001249", "name": "Intellectual disability",       "observation_status": "observed" },
+    { "id": "HP:0000252", "name": "Microcephaly",                  "observation_status": "excluded" }
+  ],
+  "exomiser_hits": [
+    {
+      "rank": 1,
+      "gene_symbol": "SCN1A",
+      "omim_ids": ["607208"],
+      "variant_hgvs": "c.4933C>T (p.Arg1645Ter)",
+      "zygosity": "heterozygous",
+      "acmg_classification": "Pathogenic",
+      "exomiser_score": 0.98,
+      "phenotype_score": 0.95,
+      "variant_score": 1.0,
+      "inheritance_pattern": "autosomal_dominant",
+      "associated_diseases": ["Dravet syndrome", "GEFS+"]
+    },
+    {
+      "rank": 2,
+      "gene_symbol": "PCDH19",
+      "omim_ids": ["300460"],
+      "variant_hgvs": "c.918G>A (p.Trp306Ter)",
+      "zygosity": "hemizygous",
+      "acmg_classification": "VUS",
+      "exomiser_score": 0.45,
+      "phenotype_score": 0.70,
+      "variant_score": 0.30,
+      "inheritance_pattern": "X_linked_recessive",
+      "associated_diseases": ["EIEE9"]
+    },
+    {
+      "rank": 3,
+      "gene_symbol": "KCNQ2",
+      "omim_ids": ["602235"],
+      "variant_hgvs": "c.778C>T (p.Arg260Cys)",
+      "zygosity": "heterozygous",
+      "acmg_classification": "Likely Pathogenic",
+      "exomiser_score": 0.62,
+      "phenotype_score": 0.68,
+      "variant_score": 0.55,
+      "inheritance_pattern": "autosomal_dominant",
+      "associated_diseases": ["Neonatal epilepsy"]
+    },
+    {
+      "rank": 4,
+      "gene_symbol": "CDKL5",
+      "omim_ids": ["300203"],
+      "variant_hgvs": null,
+      "zygosity": null,
+      "acmg_classification": null,
+      "exomiser_score": 0.38,
+      "phenotype_score": 0.60,
+      "variant_score": null,
+      "inheritance_pattern": "X_linked_dominant",
+      "associated_diseases": ["EIEE2"]
+    },
+    {
+      "rank": 5,
+      "gene_symbol": "SCN8A",
+      "omim_ids": ["600702"],
+      "variant_hgvs": "c.5615G>A (p.Arg1872Gln)",
+      "zygosity": "heterozygous",
+      "acmg_classification": "VUS",
+      "exomiser_score": 0.31,
+      "phenotype_score": 0.55,
+      "variant_score": 0.22,
+      "inheritance_pattern": "autosomal_dominant",
+      "associated_diseases": ["EIEE13"]
+    }
+  ]
+}

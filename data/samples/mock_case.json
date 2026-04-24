@@ -1,0 +1,43 @@
+{
+  "patient_id": "DEMO-DRAVET-001",
+  "age": 2.5,
+  "sex": "M",
+  "family_history": "无类似病史家族成员",
+  "clinical_text": "2岁半男性患儿，6月龄起出现热性惊厥，逐渐发展为无热惊厥，包括肌阵挛发作和全身强直-阵挛发作。发育迟缓明显，无独立行走。癫痫对多种抗癫痫药物反应差。",
+  "hpo_terms": [
+    {"id": "HP:0002373", "name": "Febrile seizure"},
+    {"id": "HP:0001250", "name": "Seizure"},
+    {"id": "HP:0002123", "name": "Generalized myoclonic seizure"},
+    {"id": "HP:0001263", "name": "Global developmental delay"},
+    {"id": "HP:0002133", "name": "Status epilepticus"},
+    {"id": "HP:0001249", "name": "Intellectual disability"}
+  ],
+  "exomiser_hits": [
+    {
+      "rank": 1,
+      "gene_symbol": "SCN1A",
+      "omim_ids": ["607208"],
+      "variant_hgvs": "c.4933C>T (p.Arg1645Ter)",
+      "zygosity": "heterozygous",
+      "acmg_classification": "Pathogenic",
+      "exomiser_score": 0.98,
+      "phenotype_score": 0.95,
+      "variant_score": 1.0,
+      "inheritance_pattern": "autosomal_dominant",
+      "associated_diseases": ["Dravet syndrome", "GEFS+"]
+    },
+    {
+      "rank": 2,
+      "gene_symbol": "PCDH19",
+      "omim_ids": ["300460"],
+      "variant_hgvs": "c.918G>A (p.Trp306Ter)",
+      "zygosity": "heterozygous",
+      "acmg_classification": "VUS",
+      "exomiser_score": 0.45,
+      "phenotype_score": 0.7,
+      "variant_score": 0.3,
+      "inheritance_pattern": "X_linked_dominant",
+      "associated_diseases": ["EIEE9"]
+    }
+  ]
+}

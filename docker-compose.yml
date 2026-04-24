@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  rare-disease-agent:
+    build: .
+    runtime: nvidia          # GPU 支持（需宿主机安装 nvidia-container-toolkit）
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"          # vllm OpenAI 兼容 API
+      - "8501:8501"          # Streamlit UI
+    volumes:
+      - ./data:/app/data     # 挂载本地知识库（HPO/Orphanet/corpus）
+      - ./models:/app/models # 挂载模型权重（避免每次重建容器都重下）
+      - ./outputs:/app/outputs
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    shm_size: "2gb"          # vllm 需要较大 /dev/shm
+    restart: unless-stopped
