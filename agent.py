@@ -94,7 +94,7 @@ class DiagnosisAgent:
                 progress_callback(msg)
 
         # ── Step 1：基于 HPO + 候选变异的初始检索 ────────────────────────────
-        log("[1/4] 初始证据检索（本地 BM25 + 可选 PubMed）...")
+        log("[1/4] 初始证据检索（本地 BM25 + PubMed / ClinVar / gnomAD，按 .env 开关）...")
         t1 = time.perf_counter()
 
         queries = build_search_queries(inp)
@@ -106,6 +106,7 @@ class DiagnosisAgent:
             kb=self.kb,
             existing_urls=existing_urls,
             start_ref_id=self._next_ref_id,
+            inp=inp,
         )
         self._add_evidences(new_evs)
         log(f"  → 检索到 {len(new_evs)} 条证据，当前累计 {len(self.evidences)} 条（{time.perf_counter()-t1:.1f}s）")
@@ -145,6 +146,7 @@ class DiagnosisAgent:
                 kb=self.kb,
                 existing_urls=existing_urls,
                 start_ref_id=self._next_ref_id,
+                inp=inp,
             )
             self._add_evidences(targeted_evs)
             log(f"  → 定向检索新增 {len(targeted_evs)} 条证据，累计 {len(self.evidences)} 条")

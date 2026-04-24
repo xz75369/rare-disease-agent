@@ -19,6 +19,14 @@ dependencies = [
     "modelscope>=1.10",
 ]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["*.py"]
+[tool.setuptools]
+py-modules = [
+    "agent",
+    "app",
+    "external_db",
+    "llm",
+    "main",
+    "prompts",
+    "rag",
+    "schemas",
+]

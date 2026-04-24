@@ -6,8 +6,6 @@
 JSON 容错解析策略（针对小模型）：
   1. 直接 json.loads()
   2. 提取 ```json ... ``` 或 ``` ... ``` fence 内容后重试
-  3. 截取第一个 '{' 到最后一个 '}' 后重试
-  4. 全部失败 → 重试整个 LLM 调用（最多 2 次）
 """
 from __future__ import annotations
 

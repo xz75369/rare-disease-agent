@@ -110,7 +110,9 @@ class DiagnosisInput(BaseModel):
 
 class Evidence(BaseModel):
     ref_id: int = Field(description="报告中引用编号 [N]")
-    source: str = Field(description="证据来源：local_kb / pubmed / exomiser")
+    source: str = Field(
+        description="证据来源：local_kb / pubmed / clinvar / gnomad / exomiser 等"
+    )
     title: str = Field(description="证据标题或名称")
     url: str = Field(
         description="证据链接（本地伪 URL 如 https://monarchinitiative.org/disease/MONDO:xxx）"

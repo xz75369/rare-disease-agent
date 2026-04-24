@@ -1,10 +1,10 @@
-"""RAG 检索层：本地 BM25（HPO/Orphanet/MONDO 知识库）+ 可选 PubMed 在线检索。
+"""RAG 检索层：本地 BM25 + 可选 PubMed / ClinVar / gnomAD 在线检索。
 
 设计原则：
 - 本地 KB 是主力，即使断网也能运行核心 4 步流程
-- PubMed 是补充，超时或不可用时静默跳过
-- PubMed 查询只含医学术语（HPO 名称、基因名），绝不含患者个人信息
-- 最终返回 ≤10 条 Evidence，每条 snippet ≤200 字
+- PubMed / ClinVar / gnomAD 为补充，超时或不可用时静默跳过
+- 在线查询仅含医学术语与基因符号，绝不含患者个人信息
+- Evidence snippet ≤250 字（与 schemas 一致）
 """
 from __future__ import annotations
 
@@ -18,7 +18,8 @@ import httpx
 from dotenv import load_dotenv
 from rank_bm25 import BM25Okapi
 
-from schemas import Evidence
+from external_db import fetch_clinvar_gnomad_for_input, pubmed_search
+from schemas import DiagnosisInput, Evidence
 
 load_dotenv()
 
@@ -159,90 +160,21 @@ def build_search_queries(inp) -> list[str]:
     return list(dict.fromkeys(queries))
 
 
-async def pubmed_search(
-    query: str,
-    max_results: int = 3,
-    timeout: int = 10,
-) -> list[dict]:
-    """调用 PubMed E-utilities 检索文献，返回元数据列表。
-
-    安全约束：query 只含 HPO 名称、基因名等医学术语，不含患者任何个人信息。
-    超时或网络不可用时返回空列表，不抛异常。
-    加入近 5 年时间过滤，优先获取新文献（针对 H3-3A 等 2021 年后才明确的新基因）。
-
-    Args:
-        query: 医学术语查询字符串（不含患者信息）
-        max_results: 最多返回条数
-        timeout: HTTP 超时秒数
-    """
-    base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
-    # 近 5 年时间过滤，优先获取新文献
-    date_filtered_query = f"{query} AND 2020:2026[dp]"
-    try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            # esearch：获取 PMID 列表
-            r1 = await client.get(
-                f"{base}/esearch.fcgi",
-                params={
-                    "db": "pubmed",
-                    "term": date_filtered_query,
-                    "retmax": max_results,
-                    "retmode": "json",
-                    "sort": "relevance",
-                },
-            )
-            r1.raise_for_status()
-            id_list: list[str] = (
-                r1.json().get("esearchresult", {}).get("idlist", [])
-            )
-            if not id_list:
-                return []
-
-            # esummary：获取文献元数据
-            r2 = await client.get(
-                f"{base}/esummary.fcgi",
-                params={
-                    "db": "pubmed",
-                    "id": ",".join(id_list),
-                    "retmode": "json",
-                },
-            )
-            r2.raise_for_status()
-            summaries = r2.json().get("result", {})
-
-        results = []
-        for pmid in id_list:
-            if pmid in summaries:
-                item = summaries[pmid]
-                results.append(
-                    {
-                        "pmid": pmid,
-                        "title": item.get("title", "")[:150],
-                        "pubdate": item.get("pubdate", ""),
-                        "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
-                    }
-                )
-        return results
-
-    except Exception as e:
-        # 网络不通/超时时静默失败，不影响核心流程
-        print(f"  [PubMed] 检索失败（断网或超时，将使用纯本地模式）: {e}")
-        return []
-
-
 async def gather_evidence(
     queries: list[str],
     kb: LocalKBRetriever,
     existing_urls: set[str] | None = None,
     start_ref_id: int = 1,
+    inp: DiagnosisInput | None = None,
 ) -> list[Evidence]:
-    """主入口：并行调本地 KB 和 PubMed（如果启用），去重并转为 Evidence。
+    """主入口：本地 BM25 + 可选 PubMed + ClinVar + gnomAD，去重并转为 Evidence。
 
     Args:
-        queries: 检索查询字符串列表（通常 1-2 条）
+        queries: 检索查询字符串列表
         kb: 已初始化的 LocalKBRetriever 实例
         existing_urls: 已有证据的 URL 集合，用于去重
-        start_ref_id: ref_id 起始编号（续接已有证据）
+        start_ref_id: ref_id 起始编号（续接已有证据；最终由 Agent 重新编号）
+        inp: 若提供，则基于候选变异 / Exomiser 基因拉取 ClinVar 与 gnomAD
 
     Returns:
         新增的 Evidence 列表（不含 existing_urls 中已有的条目）
@@ -253,56 +185,77 @@ async def gather_evidence(
     ref_id = start_ref_id
 
     enable_pubmed = os.getenv("ENABLE_PUBMED", "true").lower() == "true"
-    pubmed_timeout = int(os.getenv("PUBMED_TIMEOUT", "10"))
+    pubmed_timeout = float(os.getenv("PUBMED_TIMEOUT", "20"))
+    pubmed_max = int(os.getenv("PUBMED_MAX_RESULTS", "25"))
 
-    for query in queries:
-        # ── 本地 BM25 ─────────────────────────────────────────────
-        local_docs = kb.search(query, top_k=5)
-        for doc in local_docs:
-            url = doc.get("url") or f"https://monarchinitiative.org/disease/{doc.get('id', '')}"
-            if url in seen_urls:
-                continue
-            seen_urls.add(url)
+    headers = {"User-Agent": os.getenv("HTTP_USER_AGENT", "rare-disease-agent/0.1")}
+    timeout = httpx.Timeout(pubmed_timeout, connect=15.0)
 
-            hpo_list = doc.get("associated_hpo", [])[:5]
-            gene_list = doc.get("associated_genes", [])[:3]
-            # acmg_genes.jsonl 的 definition 已前置 ACMG 证据代码，直接使用
-            snippet = (
-                f"{doc.get('definition', '') or doc.get('description', '')} "
-                f"Genes:{','.join(gene_list)} HPO:{' '.join(hpo_list)}"
-            )[:250]
+    try:
+        async with httpx.AsyncClient(timeout=timeout, headers=headers) as client:
+            for query in queries:
+                # ── 本地 BM25 ─────────────────────────────────────────────
+                local_docs = kb.search(query, top_k=5)
+                for doc in local_docs:
+                    url = doc.get("url") or f"https://monarchinitiative.org/disease/{doc.get('id', '')}"
+                    if url in seen_urls:
+                        continue
+                    seen_urls.add(url)
 
-            results.append(
-                Evidence(
-                    ref_id=ref_id,
-                    source="local_kb",
-                    title=doc.get("name", "Unknown Disease"),
-                    url=url,
-                    snippet=snippet,
-                )
-            )
-            ref_id += 1
+                    hpo_list = doc.get("associated_hpo", [])[:5]
+                    gene_list = doc.get("associated_genes", [])[:3]
+                    snippet = (
+                        f"{doc.get('definition', '') or doc.get('description', '')} "
+                        f"Genes:{','.join(gene_list)} HPO:{' '.join(hpo_list)}"
+                    )[:250]
 
-        # ── PubMed（可选）─────────────────────────────────────────
-        if enable_pubmed:
-            pubmed_results = await pubmed_search(
-                query=query, max_results=3, timeout=pubmed_timeout
-            )
-            for item in pubmed_results:
-                url = item["url"]
-                if url in seen_urls:
-                    continue
-                seen_urls.add(url)
-
-                results.append(
-                    Evidence(
-                        ref_id=ref_id,
-                        source="pubmed",
-                        title=item["title"],
-                        url=url,
-                        snippet=f"PMID:{item['pmid']} ({item['pubdate']})",
+                    results.append(
+                        Evidence(
+                            ref_id=ref_id,
+                            source="local_kb",
+                            title=doc.get("name", "Unknown Disease"),
+                            url=url,
+                            snippet=snippet,
+                        )
                     )
-                )
-                ref_id += 1
+                    ref_id += 1
+
+                # ── PubMed（NCBI E-utilities，全库可查）────────────────────
+                if enable_pubmed:
+                    try:
+                        pubmed_results = await pubmed_search(
+                            client, query=query, max_results=pubmed_max
+                        )
+                    except Exception as e:
+                        print(f"  [PubMed] 检索失败: {e}")
+                        pubmed_results = []
+                    for item in pubmed_results:
+                        url = item["url"]
+                        if url in seen_urls:
+                            continue
+                        seen_urls.add(url)
+                        results.append(
+                            Evidence(
+                                ref_id=ref_id,
+                                source="pubmed",
+                                title=item["title"],
+                                url=url,
+                                snippet=f"PMID:{item['pmid']} ({item['pubdate']})"[:250],
+                            )
+                        )
+                        ref_id += 1
+
+            # ── ClinVar + gnomAD（依赖病例中的基因 / HGVS）──────────────
+            if inp is not None:
+                try:
+                    extra = await fetch_clinvar_gnomad_for_input(
+                        client, inp, seen_urls, ref_id
+                    )
+                    results.extend(extra)
+                except Exception as e:
+                    print(f"  [ClinVar/gnomAD] 检索失败: {e}")
+
+    except Exception as e:
+        print(f"  [gather_evidence] HTTP 客户端异常: {e}")
 
     return results

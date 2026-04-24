@@ -16,7 +16,7 @@
 │              DiagnosisAgent                 │
 │                                             │
 │  [1] RAG 检索  ←  LocalKBRetriever (BM25)    │
-│       + PubMed E-utilities (可选)            │
+│       + PubMed E-utilities                  │
 │                                             │
 │  [2] 初步诊断  →  PROMPT_INITIAL             │
 │       LLM (vllm · Qwen2.5-14B-AWQ)          │
