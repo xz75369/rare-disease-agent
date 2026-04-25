@@ -19,6 +19,7 @@ from schemas import DiagnosisInput, Evidence
 NCBI_EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 GNOMAD_API_DEFAULT = "https://gnomad.broadinstitute.org/api"
 GNOMAD_ALLOWED_DATASETS = frozenset({"gnomad_r4", "gnomad_r3", "gnomad_r2_1"})
+HPO_API_BASE = "https://hpo.jax.org/api/hpo"
 
 
 def _user_agent() -> str:
@@ -255,12 +256,15 @@ async def clinvar_gene_summaries(
     if not id_list:
         return []
 
+    cap_ids = int(os.getenv("CLINVAR_ESUMMARY_MAX_IDS", "30"))
+    id_list = id_list[: max(1, cap_ids)]
+
     sm = await ncbi_get_json(
         client,
         "esummary.fcgi",
         {
             "db": "clinvar",
-            "id": ",".join(id_list[:200]),
+            "id": ",".join(id_list),
             "retmode": "json",
         },
     )
@@ -362,6 +366,82 @@ def gnomad_variant_to_snippet(variant: dict) -> str:
     return " | ".join(parts)[:250]
 
 
+async def hpo_disease_lookup(
+    client: httpx.AsyncClient,
+    hpo_terms: list,
+    seen_urls: set[str],
+    start_ref_id: int,
+) -> list[Evidence]:
+    """HPO JAX API: 按患者 HPO 术语实时查询关联疾病，替代本地 BM25 库。
+
+    每个 HPO term 查一次 /api/hpo/term/{termId}/diseases，
+    汇总去重后转为 Evidence（source="hpo_api"）。
+    """
+    max_terms = int(os.getenv("HPO_MAX_TERMS", "8"))
+    max_per_term = int(os.getenv("HPO_MAX_DISEASES_PER_TERM", "10"))
+    timeout = float(os.getenv("HPO_TIMEOUT", "15"))
+    out: list[Evidence] = []
+    ref_id = start_ref_id
+    seen_disease_ids: set[str] = set()
+    headers = {"Accept": "application/json", "User-Agent": _user_agent()}
+
+    for term in hpo_terms[:max_terms]:
+        term_id = getattr(term, "id", None) or term.get("id", "")
+        term_name = getattr(term, "name", None) or term.get("name", term_id)
+        if not term_id:
+            continue
+        url = f"{HPO_API_BASE}/term/{term_id}/diseases"
+        try:
+            r = await client.get(url, headers=headers, timeout=timeout)
+            r.raise_for_status()
+            data = r.json()
+        except Exception as e:
+            print(f"  [HPO API] {term_id} 查询失败: {e}")
+            continue
+
+        associations = data.get("associations") or []
+        count = 0
+        for assoc in associations:
+            disease_id = (assoc.get("diseaseId") or "").strip()
+            disease_name = (assoc.get("diseaseName") or "").strip()
+            if not disease_id or disease_id in seen_disease_ids:
+                continue
+            seen_disease_ids.add(disease_id)
+
+            # 构造跳转 URL：OMIM → omim.org，ORPHA → orpha.net
+            if disease_id.startswith("OMIM:"):
+                omim_num = disease_id.split(":", 1)[1]
+                ev_url = f"https://omim.org/entry/{omim_num}"
+            elif disease_id.startswith("ORPHA:"):
+                orpha_num = disease_id.split(":", 1)[1]
+                ev_url = f"https://www.orpha.net/en/disease/detail/{orpha_num}"
+            else:
+                ev_url = f"https://hpo.jax.org/browse/disease/{disease_id}"
+
+            if ev_url in seen_urls:
+                continue
+            seen_urls.add(ev_url)
+
+            snippet = f"Associated with {term_name} ({term_id}). Disease: {disease_name} [{disease_id}]"[:250]
+            out.append(
+                Evidence(
+                    ref_id=ref_id,
+                    source="hpo_api",
+                    title=disease_name or disease_id,
+                    url=ev_url,
+                    snippet=snippet,
+                )
+            )
+            ref_id += 1
+            count += 1
+            if count >= max_per_term:
+                break
+
+        print(f"  [HPO API] {term_id} ({term_name}): +{count} 条疾病关联")
+
+    return out
+
+
 async def fetch_clinvar_gnomad_for_input(
     client: httpx.AsyncClient,
     inp: DiagnosisInput,
@@ -385,7 +465,15 @@ async def fetch_clinvar_gnomad_for_input(
     ref_id = start_ref_id
     gnomad_used = 0
 
-    for gene, hint in iter_clinvar_gene_targets(inp):
+    max_genes = int(os.getenv("CLINVAR_MAX_GENES_PER_GATHER", "5"))
+    targets = iter_clinvar_gene_targets(inp)[: max(1, max_genes)]
+    print(
+        f"  [ClinVar/gnomAD] 本轮检索基因: {len(targets)} 个"
+        f"（上限 CLINVAR_MAX_GENES_PER_GATHER={max_genes}）"
+    )
+
+    for gene, hint in targets:
+        print(f"    → {gene} …")
         pairs: list[tuple[str, dict]] = []
         if enable_cv:
             pairs = await clinvar_gene_summaries(

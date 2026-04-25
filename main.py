@@ -1,13 +1,12 @@
 """命令行运行单个病例。
 
 用法：
-    python main.py data/samples/mock_case.json
-    python main.py data/samples/mock_case.json --output outputs/result.json
+    python main.py data/samples/P002.json
+    python main.py data/samples/P002.json --output outputs/result.json
 
 前置条件：
-    1. vllm server 已启动（bash scripts/start_vllm.sh）
-    2. 知识库已准备（python scripts/prepare_corpus.py）
-    3. .env 已配置（cp .env.example .env）
+    1. .env 已配置（cp .env.example .env，填写 LLM_API_KEY）
+    2. 网络可访问（HPO API / PubMed / ClinVar / gnomAD）
 """
 from __future__ import annotations
 
@@ -22,7 +21,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from agent import DiagnosisAgent
-from rag import LocalKBRetriever
 from schemas import DiagnosisInput
 
 
@@ -32,8 +30,8 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "示例：\n"
-            "  python main.py data/samples/mock_case.json\n"
-            "  python main.py data/samples/mock_case.json -o outputs/result.json"
+            "  python main.py data/samples/P002.json\n"
+            "  python main.py data/samples/P002.json -o outputs/result.json"
         ),
     )
     parser.add_argument("case_file", help="病例 JSON 文件路径")
@@ -45,7 +43,6 @@ def parse_args() -> argparse.Namespace:
 
 
 async def run(case_file: Path, output_path: Path | None) -> None:
-    # 1. 读取输入 JSON → DiagnosisInput
     with open(case_file, encoding="utf-8") as f:
         raw = json.load(f)
     try:
@@ -55,28 +52,17 @@ async def run(case_file: Path, output_path: Path | None) -> None:
         sys.exit(1)
 
     print(f"[INFO] 患者 ID: {inp.patient_id}")
-    print(f"[INFO] HPO: {len(inp.hpo_terms)} 条  Exomiser: {len(inp.exomiser_hits)} 条")
+    print(f"[INFO] HPO: {len(inp.hpo_terms)} 条  候选变异: {len(inp.candidate_variants)} 条  Exomiser: {len(inp.exomiser_hits)} 条")
     print()
 
-    # 2. 初始化 LocalKBRetriever
-    kb = LocalKBRetriever()
-    try:
-        kb.load()
-    except FileNotFoundError as e:
-        print(f"[ERROR] {e}", file=sys.stderr)
-        sys.exit(1)
-
-    # 3. 创建 DiagnosisAgent 并运行
-    agent = DiagnosisAgent(kb_retriever=kb)
+    agent = DiagnosisAgent()
     output = await agent.diagnose(inp)
 
-    # 4. 打印报告到终端
     print()
     print("=" * 70)
     print(output.report_markdown)
     print("=" * 70)
 
-    # 5. 保存完整 DiagnosisOutput
     if output_path is None:
         Path("outputs").mkdir(exist_ok=True)
         output_path = Path("outputs") / f"{inp.patient_id}.json"

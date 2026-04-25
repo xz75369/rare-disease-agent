@@ -1,7 +1,7 @@
 """4 步主流程 Agent：罕见病诊断核心逻辑。
 
 流程：
-  Step 1 — RAG 检索（初始，基于 HPO）
+  Step 1 — RAG 检索（HPO API + PubMed + ClinVar + gnomAD）
   Step 2 — 初步诊断（LLM → top 5 假设）
   Step 3 — 定向检索 + 自反思（针对 top 2 假设扩充证据，LLM 批判重排）
   Step 4 — 最终报告（LLM → 中文 Markdown + [N] 引用验证）
@@ -20,15 +20,14 @@ from prompts import (
     build_evidence_block,
     build_patient_block,
 )
-from rag import LocalKBRetriever, gather_evidence, build_search_queries
+from rag import gather_evidence, build_search_queries
 from schemas import DiagnosisInput, DiagnosisOutput, Evidence, Hypothesis
 
 
 class DiagnosisAgent:
     """单 Agent 罕见病诊断系统，通过自反思循环控制幻觉。"""
 
-    def __init__(self, kb_retriever: LocalKBRetriever) -> None:
-        self.kb = kb_retriever
+    def __init__(self) -> None:
         self.evidences: list[Evidence] = []
         self._next_ref_id: int = 1
 
@@ -47,14 +46,10 @@ class DiagnosisAgent:
         return build_evidence_block(self.evidences[:15])
 
     def _parse_hypotheses(self, raw: dict) -> list[Hypothesis]:
-        """从 LLM 返回的 dict 中安全解析 Hypothesis 列表。
-        兼容新 Prompt 格式（含 vus_upgrade_hint、related_variant 等额外字段）。
-        """
+        """从 LLM 返回的 dict 中安全解析 Hypothesis 列表。"""
         hyps: list[Hypothesis] = []
         for item in raw.get("hypotheses", [])[:5]:
             try:
-                # 新 Prompt 用 conflicting_phenotypes 字段名保持一致
-                # 若 LLM 返回旧字段名则做兼容映射
                 if "missing_key_phenotypes" in item and "conflicting_phenotypes" not in item:
                     item["conflicting_phenotypes"] = item.pop("missing_key_phenotypes")
                 hyps.append(Hypothesis.model_validate(item))
@@ -63,10 +58,7 @@ class DiagnosisAgent:
         return hyps
 
     def _validate_refs(self, markdown: str) -> str:
-        """验证报告中的 [N] 引用，将非法引用替换为 [?]。
-
-        合法引用：N 必须在 self.evidences 的 ref_id 中。
-        """
+        """验证报告中的 [N] 引用，将非法引用替换为 [?]。"""
         valid_refs = {e.ref_id for e in self.evidences}
 
         def replace(match: re.Match) -> str:
@@ -80,12 +72,7 @@ class DiagnosisAgent:
         inp: DiagnosisInput,
         progress_callback: Optional[Callable[[str], None]] = None,
     ) -> DiagnosisOutput:
-        """主流程：4 步诊断，返回 DiagnosisOutput。
-
-        Args:
-            inp: 患者病例（HPO + Exomiser）
-            progress_callback: 可选进度回调，用于 Streamlit 实时展示
-        """
+        """主流程：4 步诊断，返回 DiagnosisOutput。"""
         t_total = time.perf_counter()
 
         def log(msg: str) -> None:
@@ -93,23 +80,22 @@ class DiagnosisAgent:
             if progress_callback:
                 progress_callback(msg)
 
-        # ── Step 1：基于 HPO + 候选变异的初始检索 ────────────────────────────
-        log("[1/4] 初始证据检索（本地 BM25 + PubMed / ClinVar / gnomAD，按 .env 开关）...")
+        # ── Step 1：初始检索（HPO API + PubMed + ClinVar + gnomAD）──────────
+        log("[1/4] 初始证据检索（HPO API + PubMed + ClinVar + gnomAD）...")
         t1 = time.perf_counter()
 
         queries = build_search_queries(inp)
-        log(f"  构造 {len(queries)} 个检索 query...")
+        log(f"  构造 {len(queries)} 个 PubMed query...")
 
         existing_urls = {e.url for e in self.evidences}
         new_evs = await gather_evidence(
             queries=queries,
-            kb=self.kb,
             existing_urls=existing_urls,
             start_ref_id=self._next_ref_id,
             inp=inp,
         )
         self._add_evidences(new_evs)
-        log(f"  → 检索到 {len(new_evs)} 条证据，当前累计 {len(self.evidences)} 条（{time.perf_counter()-t1:.1f}s）")
+        log(f"  → 检索到 {len(new_evs)} 条证据，累计 {len(self.evidences)} 条（{time.perf_counter()-t1:.1f}s）")
 
         # ── Step 2：初步诊断 ──────────────────────────────────────────────────
         log("[2/4] 初步诊断（LLM 生成 top 5 假设）...")
@@ -137,13 +123,11 @@ class DiagnosisAgent:
         log("[3/4] 定向检索 + 自反思...")
         t3 = time.perf_counter()
 
-        # 对 top 2 假设各做一次定向检索，扩充证据
         top2_queries = [h.disease_name for h in hypotheses[:2]]
         if top2_queries:
             existing_urls = {e.url for e in self.evidences}
             targeted_evs = await gather_evidence(
                 queries=top2_queries,
-                kb=self.kb,
                 existing_urls=existing_urls,
                 start_ref_id=self._next_ref_id,
                 inp=inp,
@@ -151,7 +135,6 @@ class DiagnosisAgent:
             self._add_evidences(targeted_evs)
             log(f"  → 定向检索新增 {len(targeted_evs)} 条证据，累计 {len(self.evidences)} 条")
 
-        # 自反思：让 LLM 批判每个假设并重排
         evidence_block_updated = self._indexed_evidence_text()
         hyp_json_block = "\n".join(
             f"  Rank {h.rank}: {h.disease_name} ({h.confidence}) — {h.one_line_reason}"
@@ -166,13 +149,12 @@ class DiagnosisAgent:
 
         raw_reflect = await llm_json(system=PROMPT_REFLECT, user=user_reflect)
 
-        # 优先使用自反思后的 final_hypotheses；如果解析失败则保留初始假设
         final_hyps_raw = raw_reflect.get("final_hypotheses", [])
         if final_hyps_raw:
             final_hypotheses = []
             for item in final_hyps_raw[:5]:
                 try:
-                    final_hypotheses.append(Hypothesis(**item))
+                    final_hypotheses.append(Hypothesis.model_validate(item))
                 except Exception as e:
                     print(f"  [WARN] 自反思假设解析跳过: {e}")
             if not final_hypotheses:
@@ -203,15 +185,13 @@ class DiagnosisAgent:
         raw_final = await llm_json(
             system=PROMPT_FINAL,
             user=user_final,
-            temperature=0.1,  # 报告生成用低温
+            temperature=0.1,
         )
 
         report_markdown = raw_final.get("report_markdown", "")
         if not report_markdown:
-            # 兜底：LLM 未返回报告时生成最简版
             report_markdown = _fallback_report(inp.patient_id, final_hypotheses, self.evidences)
 
-        # 验证 [N] 引用合法性
         report_markdown = self._validate_refs(report_markdown)
         log(f"  → 报告生成完成（{time.perf_counter()-t4:.1f}s）")
 
@@ -229,6 +209,7 @@ class DiagnosisAgent:
                 "evidence_count": len(self.evidences),
                 "hypothesis_count": len(final_hypotheses),
                 "pubmed_enabled": __import__("os").getenv("ENABLE_PUBMED", "true"),
+                "hpo_api_enabled": __import__("os").getenv("ENABLE_HPO_API", "true"),
             },
         )
 

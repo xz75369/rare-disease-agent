@@ -243,15 +243,6 @@ def run_async(coro):
     return asyncio.run(coro)
 
 
-@st.cache_resource(show_spinner="加载本地知识库（BM25）...")
-def get_kb():
-    """加载 LocalKBRetriever 单例（Streamlit 会话间复用）。"""
-    from rag import LocalKBRetriever
-    kb = LocalKBRetriever()
-    kb.load()
-    return kb
-
-
 def render_sidebar() -> dict | None:
     """渲染左侧 sidebar，返回解析后的病例 dict（用户点击"开始诊断"时），或 None。"""
     with st.sidebar:
@@ -264,7 +255,7 @@ def render_sidebar() -> dict | None:
             f"**模型**: {os.getenv('LLM_MODEL', 'Qwen/Qwen2.5-14B-Instruct-AWQ')}\n\n"
             f"**端点**: {os.getenv('LLM_BASE_URL', 'http://localhost:8000/v1')}\n\n"
         )
-        st.caption("患者数据不出站 · 仅使用本地 vllm")
+        st.caption("变异数据实时拉取自 HPO API / ClinVar / gnomAD")
         st.divider()
 
         # ── 病例选择 ──────────────────────────────────────────────
@@ -393,8 +384,7 @@ def render_main(case_data: dict | None) -> None:
             st.write(msg)
 
         try:
-            kb = get_kb()
-            agent = DiagnosisAgent(kb_retriever=kb)
+            agent = DiagnosisAgent()
             output = run_async(agent.diagnose(inp, progress_callback=on_progress))
             st.session_state["output"] = output
             status.update(label="诊断完成", state="complete")
